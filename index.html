@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Family Dashboard</title>
+<style>
+  :root { --bg:#0e1116; --card:#171c24; --card2:#1f2530; --text:#eef2f7; --muted:#8b97a8; --accent:#5ac8fa; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; overflow:hidden; }
+  #app { display:grid; grid-template-columns: 27% 1fr 25%; grid-gap:12px; height:100%; padding:12px; }
+  .card { background:var(--card); border-radius:18px; padding:16px; overflow:hidden; min-height:0; }
+  .title { font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); font-weight:600; margin-bottom:8px; }
+
+  /* left column */
+  #left { display:flex; flex-direction:column; min-height:0; }
+  #left .card { flex:1; min-height:0; }
+  #left .card + .card { margin-top:12px; }
+  #weatherCard { display:flex; flex-direction:column; }
+  #now { display:flex; align-items:center; }
+  #nowIcon { font-size:56px; margin-right:12px; }
+  #nowTemp { font-size:46px; font-weight:200; line-height:1; }
+  #nowDesc { color:var(--muted); font-size:14px; margin-top:4px; }
+  #hilo { color:var(--muted); font-size:13px; margin-top:6px; }
+  #forecast { display:grid; grid-template-columns: repeat(4, 1fr); grid-gap:6px; margin-top:auto; text-align:center; }
+  .fday { background:var(--card2); border-radius:12px; padding:8px 2px; }
+  .fday .d { color:var(--muted); font-size:12px; }
+  .fday .i { font-size:22px; margin:3px 0; }
+  .fday .t { font-size:12px; }
+  .fday .p { color:var(--accent); font-size:11px; }
+
+  #agileCard { display:flex; flex-direction:column; }
+  #agPrice { font-size:52px; font-weight:200; line-height:1; }
+  #agPrice small { font-size:18px; color:var(--muted); }
+  #agLabel { font-size:14px; margin-top:4px; font-weight:600; }
+  #agNext { color:var(--muted); font-size:13px; margin-top:6px; }
+  #bars { display:flex; align-items:flex-end; height:70px; margin-top:auto; }
+  #bars div { flex:1; margin-right:2px; border-radius:2px 2px 0 0; min-height:3px; }
+  #bars div:last-child { margin-right:0; }
+  #agBest { color:var(--muted); font-size:12px; margin-top:8px; }
+
+  /* centre month */
+  #centre { display:flex; flex-direction:column; }
+  #monthTitle { font-size:24px; font-weight:600; margin-bottom:8px; }
+  #dow { display:grid; grid-template-columns: repeat(7, 1fr); grid-gap:4px; color:var(--muted); font-size:12px; text-align:center; margin-bottom:4px; }
+  #month { flex:1; display:grid; grid-template-columns: repeat(7, 1fr); grid-gap:4px; min-height:0; }
+  .cell { background:var(--card2); border-radius:8px; padding:4px 5px; overflow:hidden; min-height:0; }
+  .cell.other { opacity:.35; }
+  .cell.today { box-shadow: inset 0 0 0 2px var(--accent); }
+  .cell .n { font-size:13px; font-weight:600; margin-bottom:2px; }
+  .cell.today .n { color:var(--accent); }
+  .chip { font-size:11px; line-height:15px; padding:0 4px; margin-bottom:2px; border-left:3px solid var(--accent); background:rgba(255,255,255,.06);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; border-radius:2px; }
+  .more { font-size:10px; color:var(--muted); }
+
+  /* right column */
+  #right { display:flex; flex-direction:column; }
+  #time { font-size:54px; font-weight:200; line-height:1; letter-spacing:-1px; text-align:center; }
+  #date { color:var(--muted); font-size:15px; text-align:center; margin:6px 0 12px; }
+  #today { flex:1; overflow-y:auto; min-height:0; }
+  .ev { padding:7px 9px; margin-bottom:5px; background:var(--card2); border-radius:8px; border-left:5px solid var(--accent); font-size:15px; }
+  .ev.past { opacity:.45; }
+  .ev .tm { color:var(--muted); font-size:12px; display:block; }
+  .ev .who { color:var(--muted); font-size:11px; }
+  .empty { color:var(--muted); font-style:italic; font-size:14px; }
+
+  #gear { position:fixed; right:6px; bottom:4px; opacity:.25; background:none; border:0; color:#fff; font-size:20px; padding:8px; }
+  #status { position:fixed; left:14px; bottom:3px; color:#556; font-size:10px; }
+  #settings { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.8); display:none; align-items:center; justify-content:center; z-index:10; }
+  #settings.open { display:flex; }
+  #panel { background:#1b212b; border-radius:18px; padding:22px; width:min(640px, 94vw); max-height:92vh; overflow:auto; }
+  #panel h3 { margin:0 0 6px; }
+  #panel label { display:block; margin:14px 0 4px; color:var(--muted); font-size:13px; }
+  #panel input, #panel select { width:100%; padding:10px; border-radius:8px; border:1px solid #333c4a; background:#10141a; color:#fff; font-size:15px; }
+  #panel button { padding:10px 16px; border-radius:8px; border:0; background:var(--accent); color:#000; font-weight:600; font-size:14px; margin-top:10px; }
+  #panel button.ghost { background:#2a3240; color:#fff; }
+  .calrow { display:grid; grid-template-columns: 1fr 2fr 50px 40px; grid-gap:6px; margin-bottom:6px; }
+  .calrow input[type=color] { padding:2px; height:40px; }
+  .hint { color:var(--muted); font-size:12px; margin-top:4px; line-height:1.4; }
+  @media (max-width: 800px) { #app { grid-template-columns: 1fr; overflow:auto; height:auto; } html, body { overflow:auto; } #month { min-height:420px; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="left">
+    <div class="card" id="weatherCard">
+      <div class="title" id="wTitle">Weather</div>
+      <div id="now"><div id="nowIcon"></div><div><div id="nowTemp">--</div><div id="nowDesc"></div></div></div>
+      <div id="hilo"></div>
+      <div id="forecast"></div>
+    </div>
+    <div class="card" id="agileCard">
+      <div class="title">Octopus Agile &middot; East Midlands</div>
+      <div id="agPrice">--</div>
+      <div id="agLabel"></div>
+      <div id="agNext"></div>
+      <div id="bars"></div>
+      <div id="agBest"></div>
+    </div>
+  </div>
+
+  <div class="card" id="centre">
+    <div id="monthTitle"></div>
+    <div id="dow"></div>
+    <div id="month"></div>
+  </div>
+
+  <div class="card" id="right">
+    <div id="time">--:--</div>
+    <div id="date"></div>
+    <div class="title">Today</div>
+    <div id="today"></div>
+  </div>
+</div>
+<button id="gear" title="Settings">&#9881;</button>
+<div id="status"></div>
+
+<div id="settings"><div id="panel">
+  <h3>Dashboard settings</h3>
+  <label>Temperature units</label>
+  <select id="units"><option value="celsius">&deg;C</option><option value="fahrenheit">&deg;F</option></select>
+  <label>24-hour clock</label>
+  <select id="h24"><option value="1">Yes</option><option value="0">No (AM/PM)</option></select>
+
+  <label>Calendars (iCloud public links)</label>
+  <div id="cals"></div>
+  <button class="ghost" id="addCal">+ Add calendar</button>
+  <div class="hint">On each iPhone: Calendar app &rarr; Calendars &rarr; &#9432; next to the calendar &rarr; turn on <b>Public Calendar</b> &rarr; Share Link &rarr; send yourself the link (starts with webcal://). Paste it above. Anyone with the link can read that calendar, so share only calendars you're happy to expose.</div>
+
+  <label>CORS proxy prefix (needed for iCloud links)</label>
+  <input id="proxy" placeholder="https://your-worker.example.workers.dev/?url=">
+  <div class="hint">iCloud doesn't allow browsers to fetch calendars directly. Deploy the small proxy in worker.js and paste its address ending in ?url= here.</div>
+
+  <div style="margin-top:18px"><button id="save">Save</button> <button id="close" class="ghost">Cancel</button></div>
+</div></div>
+
+<script>
+/* ---------- Fixed settings: change these if you move house ---------- */
+var PLACE = 'Sutton in Ashfield', LAT = 53.125, LON = -1.261;
+var AGILE_REGION = 'B';          // B = East Midlands
+var AGILE_FALLBACK = 'AGILE-24-10-01';
+
+var $ = function(s){ return document.querySelector(s); };
+var DEFAULTS = { units:'celsius', h24:'1', proxy:'', cals:[] };
+var cfg = Object.assign({}, DEFAULTS, safeLoad());
+function safeLoad(){ try { return JSON.parse(localStorage.getItem('famdash')||'{}'); } catch(e){ return {}; } }
+function safeSave(){ try { var c = Object.assign({}, cfg); delete c._edit; localStorage.setItem('famdash', JSON.stringify(c)); } catch(e){} }
+function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function hm(d){ return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12: cfg.h24 !== '1'}); }
+
+/* ---------- Clock ---------- */
+function tick(){
+  var n = new Date();
+  $('#time').textContent = hm(n);
+  $('#date').textContent = n.toLocaleDateString([], {weekday:'long', day:'numeric', month:'long'});
+}
+setInterval(tick, 1000); tick();
+
+/* ---------- Weather (Open-Meteo, no key) ---------- */
+var WX = {0:['\u2600\uFE0F','Clear'],1:['\uD83C\uDF24\uFE0F','Mostly clear'],2:['\u26C5','Partly cloudy'],3:['\u2601\uFE0F','Overcast'],45:['\uD83C\uDF2B\uFE0F','Fog'],48:['\uD83C\uDF2B\uFE0F','Rime fog'],
+ 51:['\uD83C\uDF26\uFE0F','Light drizzle'],53:['\uD83C\uDF26\uFE0F','Drizzle'],55:['\uD83C\uDF27\uFE0F','Heavy drizzle'],56:['\uD83C\uDF27\uFE0F','Freezing drizzle'],57:['\uD83C\uDF27\uFE0F','Freezing drizzle'],
+ 61:['\uD83C\uDF26\uFE0F','Light rain'],63:['\uD83C\uDF27\uFE0F','Rain'],65:['\uD83C\uDF27\uFE0F','Heavy rain'],66:['\uD83C\uDF27\uFE0F','Freezing rain'],67:['\uD83C\uDF27\uFE0F','Freezing rain'],
+ 71:['\uD83C\uDF28\uFE0F','Light snow'],73:['\uD83C\uDF28\uFE0F','Snow'],75:['\u2744\uFE0F','Heavy snow'],77:['\u2744\uFE0F','Snow grains'],80:['\uD83C\uDF26\uFE0F','Showers'],81:['\uD83C\uDF27\uFE0F','Showers'],82:['\u26C8\uFE0F','Violent showers'],
+ 85:['\uD83C\uDF28\uFE0F','Snow showers'],86:['\uD83C\uDF28\uFE0F','Snow showers'],95:['\u26C8\uFE0F','Thunderstorm'],96:['\u26C8\uFE0F','Thunderstorm, hail'],99:['\u26C8\uFE0F','Thunderstorm, hail']};
+$('#wTitle').textContent = 'Weather \u00B7 ' + PLACE;
+async function loadWeather(){
+  try {
+    var u = 'https://api.open-meteo.com/v1/forecast?latitude='+LAT+'&longitude='+LON+
+      '&current=temperature_2m,apparent_temperature,weather_code'+
+      '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max'+
+      '&timezone=auto&forecast_days=5&temperature_unit='+cfg.units;
+    var r = await (await fetch(u)).json();
+    var sym = cfg.units === 'celsius' ? '\u00B0C' : '\u00B0F';
+    var w = WX[r.current.weather_code] || ['\u2754','\u2014'];
+    $('#nowIcon').textContent = w[0];
+    $('#nowTemp').textContent = Math.round(r.current.temperature_2m) + sym;
+    $('#nowDesc').textContent = w[1] + ' \u00B7 feels ' + Math.round(r.current.apparent_temperature) + '\u00B0';
+    $('#hilo').textContent = 'Today ' + Math.round(r.daily.temperature_2m_max[0]) + '\u00B0 / ' + Math.round(r.daily.temperature_2m_min[0]) + '\u00B0 \u00B7 rain ' + (r.daily.precipitation_probability_max[0] || 0) + '%';
+    var html = '';
+    for (var k=1; k<=4; k++){
+      var ww = WX[r.daily.weather_code[k]] || ['\u2754'];
+      var name = new Date(r.daily.time[k]+'T12:00').toLocaleDateString([], {weekday:'short'});
+      html += '<div class="fday"><div class="d">'+name+'</div><div class="i">'+ww[0]+'</div><div class="t">'+Math.round(r.daily.temperature_2m_max[k])+'\u00B0/'+Math.round(r.daily.temperature_2m_min[k])+'\u00B0</div><div class="p">'+(r.daily.precipitation_probability_max[k] || 0)+'%</div></div>';
+    }
+    $('#forecast').innerHTML = html;
+  } catch(e){ $('#nowDesc').textContent = 'Weather unavailable (offline?)'; }
+}
+
+/* ---------- Octopus Agile (public API, no key) ---------- */
+var agileProduct = null, agileRates = [];
+async function findAgileProduct(){
+  var url = 'https://api.octopus.energy/v1/products/?brand=OCTOPUS_ENERGY&is_business=false', best = null, pages = 0;
+  while (url && pages < 6){
+    var r = await (await fetch(url)).json();
+    (r.results || []).forEach(function(p){
+      if (/^AGILE/.test(p.code) && !/OUTGOING|EXPORT/.test(p.code) && p.direction !== 'EXPORT' && (!p.available_to || new Date(p.available_to) > new Date())){
+        if (!best || new Date(p.available_from) > new Date(best.available_from)) best = p;
+      }
+    });
+    url = r.next; pages++;
+  }
+  return best ? best.code : AGILE_FALLBACK;
+}
+async function loadAgile(){
+  try {
+    if (!agileProduct) agileProduct = await findAgileProduct();
+    var from = new Date(Date.now() - 3600000).toISOString(), to = new Date(Date.now() + 40*3600000).toISOString();
+    var u = 'https://api.octopus.energy/v1/products/'+agileProduct+'/electricity-tariffs/E-1R-'+agileProduct+'-'+AGILE_REGION+'/standard-unit-rates/?period_from='+from+'&period_to='+to+'&page_size=200';
+    var r = await (await fetch(u)).json();
+    agileRates = (r.results || []).map(function(x){ return { from:new Date(x.valid_from), to:new Date(x.valid_to), p:x.value_inc_vat }; })
+      .sort(function(a,b){ return a.from - b.from; });
+    $('#status').setAttribute('data-agile', 'Agile ' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}));
+    renderAgile();
+  } catch(e){ $('#agLabel').textContent = 'Agile prices unavailable (offline?)'; }
+}
+function band(p){
+  if (p <= 0) return ['#32d6c8','Plunge \u2013 you get paid!'];
+  if (p < 15) return ['#30d158','Cheap'];
+  if (p < 27) return ['#ffb340','Average'];
+  return ['#ff453a','Expensive'];
+}
+function renderAgile(){
+  if (!agileRates.length) return;
+  var now = new Date(), cur = null, idx = -1;
+  for (var i=0;i<agileRates.length;i++){ if (agileRates[i].from <= now && now < agileRates[i].to){ cur = agileRates[i]; idx = i; break; } }
+  if (!cur){ $('#agPrice').textContent = '--'; $('#agLabel').textContent = 'No current rate'; return; }
+  var b = band(cur.p);
+  $('#agPrice').innerHTML = '<span style="color:'+b[0]+'">'+cur.p.toFixed(1)+'</span><small> p/kWh</small>';
+  $('#agLabel').style.color = b[0]; $('#agLabel').textContent = b[1];
+  var nxt = agileRates[idx+1];
+  $('#agNext').textContent = 'Until ' + hm(cur.to) + (nxt ? ' \u00B7 then ' + nxt.p.toFixed(1) + 'p' : '');
+  var ahead = agileRates.slice(idx, idx+24), vals = ahead.map(function(x){ return x.p; });
+  var mn = Math.min.apply(null, vals.concat([0])), mx = Math.max.apply(null, vals);
+  var span = (mx - mn) || 1, html = '';
+  ahead.forEach(function(x, j){
+    var h = Math.max(4, Math.round((x.p - mn) / span * 100));
+    html += '<div style="height:'+h+'%;background:'+band(x.p)[0]+';opacity:'+(j===0?1:0.55)+'"></div>';
+  });
+  $('#bars').innerHTML = html;
+  var up = agileRates.slice(idx), best = up[0];
+  up.forEach(function(x){ if (x.p < best.p) best = x; });
+  $('#agBest').textContent = 'Cheapest ahead: ' + best.p.toFixed(1) + 'p at ' + hm(best.from) + ' (next 12h shown)';
+}
+setInterval(renderAgile, 60000);
+
+/* ---------- ICS parsing ---------- */
+function unfold(t){ return t.replace(/\r?\n[ \t]/g, ''); }
+function parseDT(val){
+  var m = val.match(/^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z)?)?$/);
+  if (!m) return null;
+  if (!m[4]) return { date:new Date(+m[1], m[2]-1, +m[3]), allDay:true };
+  if (m[7]) return { date:new Date(Date.UTC(+m[1], m[2]-1, +m[3], +m[4], +m[5], +m[6])), allDay:false };
+  return { date:new Date(+m[1], m[2]-1, +m[3], +m[4], +m[5], +m[6]), allDay:false };
+}
+function parseICS(text){
+  var lines = unfold(text).split(/\r?\n/), evs = [], cur = null;
+  lines.forEach(function(line){
+    if (line === 'BEGIN:VEVENT') cur = { ex:[] };
+    else if (line === 'END:VEVENT'){ if (cur && cur.start) evs.push(cur); cur = null; }
+    else if (cur){
+      var i = line.indexOf(':'); if (i < 0) return;
+      var head = line.slice(0,i), val = line.slice(i+1), name = head.split(';')[0].toUpperCase();
+      if (name === 'SUMMARY') cur.summary = val.replace(/\\,/g,',').replace(/\\n/g,' ').replace(/\\;/g,';');
+      else if (name === 'DTSTART'){ var p = parseDT(val); if (p){ cur.start = p.date; cur.allDay = p.allDay; } }
+      else if (name === 'DTEND'){ var q = parseDT(val); if (q) cur.end = q.date; }
+      else if (name === 'RRULE'){ cur.rrule = {}; val.split(';').forEach(function(x){ var kv = x.split('='); cur.rrule[kv[0]] = kv[1]; }); }
+      else if (name === 'EXDATE'){ val.split(',').forEach(function(v){ var e = parseDT(v); if (e) cur.ex.push(e.date.getTime()); }); }
+    }
+  });
+  return evs;
+}
+var DAYCODES = ['SU','MO','TU','WE','TH','FR','SA'];
+function expand(ev, from, to){
+  var dur = ev.end ? ev.end - ev.start : (ev.allDay ? 86400000 : 0), out = [];
+  function make(s){
+    var e = ev.allDay ? new Date(s.getFullYear(), s.getMonth(), s.getDate() + Math.max(1, Math.round(dur/86400000))) : new Date(s.getTime() + dur);
+    return { summary: ev.summary || '(no title)', start:s, end:e, allDay:ev.allDay };
+  }
+  function push(s){ if (ev.ex.indexOf(s.getTime()) >= 0) return; var o = make(s); if (o.end > from && o.start < to) out.push(o); else if (o.start.getTime() === o.end.getTime() && o.start >= from && o.start < to) out.push(o); }
+  if (!ev.rrule){ push(ev.start); return out; }
+  var r = ev.rrule, interval = +(r.INTERVAL||1), count = r.COUNT ? +r.COUNT : Infinity;
+  var until = r.UNTIL ? (parseDT(r.UNTIL)||{}).date : null;
+  var by = r.BYDAY ? r.BYDAY.split(',').map(function(x){ return x.slice(-2); }) : [DAYCODES[ev.start.getDay()]];
+  var startDay = new Date(ev.start.getFullYear(), ev.start.getMonth(), ev.start.getDate());
+  function weekStart(d){ var x = new Date(d); x.setDate(x.getDate() - ((x.getDay()+6)%7)); return x; }
+  var ws0 = weekStart(startDay), n = 0, guard = 0;
+  for (var d = new Date(startDay); d < to && guard < 7000; d.setDate(d.getDate()+1), guard++){
+    if (until && d > until) break;
+    var dd = Math.round((d - startDay)/86400000), ok = false;
+    if (r.FREQ === 'DAILY') ok = dd % interval === 0;
+    else if (r.FREQ === 'WEEKLY') ok = by.indexOf(DAYCODES[d.getDay()]) >= 0 && (Math.round((weekStart(d)-ws0)/604800000) % interval === 0);
+    else if (r.FREQ === 'MONTHLY') ok = d.getDate() === startDay.getDate() && (((d.getFullYear()-startDay.getFullYear())*12 + d.getMonth()-startDay.getMonth()) % interval === 0);
+    else if (r.FREQ === 'YEARLY') ok = d.getDate() === startDay.getDate() && d.getMonth() === startDay.getMonth() && ((d.getFullYear()-startDay.getFullYear()) % interval === 0);
+    if (!ok) continue;
+    if (++n > count) break;
+    var s = new Date(d); s.setHours(ev.start.getHours(), ev.start.getMinutes(), 0, 0);
+    push(s);
+  }
+  return out;
+}
+
+/* ---------- Calendars ---------- */
+var occurrences = [], calErrors = [], calUpdated = null;
+function gridStart(){
+  var now = new Date(), first = new Date(now.getFullYear(), now.getMonth(), 1);
+  return new Date(first.getFullYear(), first.getMonth(), 1 - ((first.getDay()+6)%7));
+}
+async function fetchICS(url){
+  url = url.trim().replace(/^webcal:/i, 'https:');
+  var full = cfg.proxy ? cfg.proxy + encodeURIComponent(url) : url;
+  var res = await fetch(full); if (!res.ok) throw new Error(res.status);
+  return res.text();
+}
+async function loadCalendars(){
+  var from = gridStart(), to = new Date(from.getFullYear(), from.getMonth(), from.getDate()+42), all = [], errors = [];
+  await Promise.all(cfg.cals.map(async function(c){
+    try {
+      var evs = parseICS(await fetchICS(c.url));
+      evs.forEach(function(e){ expand(e, from, to).forEach(function(o){ o.who = c.name; o.color = c.color; all.push(o); }); });
+    } catch(e){ errors.push(c.name || 'calendar'); }
+  }));
+  occurrences = all; calErrors = errors; calUpdated = new Date();
+  renderCalendar();
+}
+function occursOn(o, d){
+  var next = new Date(d.getFullYear(), d.getMonth(), d.getDate()+1);
+  if (o.end.getTime() === o.start.getTime()) return o.start >= d && o.start < next;
+  return o.start < next && o.end > d;
+}
+function byTime(a,b){ return (b.allDay?1:0) - (a.allDay?1:0) || a.start - b.start; }
+function renderCalendar(){
+  var now = new Date(), today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  var gs = gridStart(), first = new Date(now.getFullYear(), now.getMonth(), 1);
+  var dim = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+  var weeks = Math.ceil((((first.getDay()+6)%7) + dim) / 7);
+  $('#monthTitle').textContent = now.toLocaleDateString([], {month:'long', year:'numeric'});
+  var dow = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  $('#dow').innerHTML = dow.map(function(x){ return '<div>'+x+'</div>'; }).join('');
+  var m = $('#month'); m.style.gridTemplateRows = 'repeat('+weeks+', 1fr)';
+  var maxChips = weeks > 5 ? 3 : 4, html = '';
+  for (var i=0; i<weeks*7; i++){
+    var d = new Date(gs.getFullYear(), gs.getMonth(), gs.getDate()+i);
+    var evs = occurrences.filter(function(o){ return occursOn(o, d); }).sort(byTime);
+    var cls = 'cell' + (d.getMonth() !== now.getMonth() ? ' other' : '') + (d.getTime() === today.getTime() ? ' today' : '');
+    html += '<div class="'+cls+'"><div class="n">'+d.getDate()+'</div>';
+    evs.slice(0, maxChips).forEach(function(e){
+      html += '<div class="chip" style="border-left-color:'+e.color+'">'+(e.allDay ? '' : hm(e.start).replace(/^0/,'')+' ')+esc(e.summary)+'</div>';
+    });
+    if (evs.length > maxChips) html += '<div class="more">+'+(evs.length-maxChips)+' more</div>';
+    html += '</div>';
+  }
+  m.innerHTML = html;
+
+  var t = occurrences.filter(function(o){ return occursOn(o, today); }).sort(byTime), th = '';
+  if (!cfg.cals.length) th = '<div class="empty">No calendars yet \u2014 tap \u2699 to add some.</div>';
+  else if (!t.length) th = '<div class="empty">Nothing planned today</div>';
+  t.forEach(function(e){
+    var past = !e.allDay && e.end < now;
+    th += '<div class="ev'+(past?' past':'')+'" style="border-left-color:'+e.color+'"><span class="tm">'+(e.allDay ? 'All day' : hm(e.start)+' \u2013 '+hm(e.end))+'</span>'+esc(e.summary)+' <span class="who">'+esc(e.who)+'</span></div>';
+  });
+  $('#today').innerHTML = th;
+  var s = (calErrors.length ? 'Could not load: ' + calErrors.join(', ') + ' \u00B7 ' : '') + (calUpdated ? 'Calendars ' + hm(calUpdated) : '');
+  $('#status').textContent = s;
+}
+setInterval(renderCalendar, 60000);
+
+/* ---------- Settings UI ---------- */
+var PALETTE = ['#5ac8fa','#ff9f0a','#30d158','#ff375f','#bf5af2','#ffd60a'];
+function renderCalRows(){
+  $('#cals').innerHTML = '';
+  cfg._edit.forEach(function(c, i){
+    var row = document.createElement('div'); row.className = 'calrow';
+    row.innerHTML = '<input placeholder="Name" value="'+esc(c.name)+'"><input placeholder="webcal://\u2026" value="'+esc(c.url)+'"><input type="color" value="'+c.color+'"><button class="ghost" style="margin:0">\u2715</button>';
+    var k = row.children;
+    k[0].oninput = function(){ c.name = k[0].value; }; k[1].oninput = function(){ c.url = k[1].value; }; k[2].oninput = function(){ c.color = k[2].value; };
+    k[3].onclick = function(){ cfg._edit.splice(i,1); renderCalRows(); };
+    $('#cals').appendChild(row);
+  });
+}
+$('#gear').onclick = function(){
+  cfg._edit = cfg.cals.map(function(c){ return Object.assign({}, c); });
+  $('#units').value = cfg.units; $('#h24').value = cfg.h24; $('#proxy').value = cfg.proxy;
+  renderCalRows(); $('#settings').classList.add('open');
+};
+$('#addCal').onclick = function(){ cfg._edit.push({name:'', url:'', color:PALETTE[cfg._edit.length % PALETTE.length]}); renderCalRows(); };
+$('#close').onclick = function(){ $('#settings').classList.remove('open'); };
+$('#save').onclick = function(){
+  cfg.units = $('#units').value; cfg.h24 = $('#h24').value; cfg.proxy = $('#proxy').value.trim();
+  cfg.cals = cfg._edit.filter(function(c){ return c.url.trim(); });
+  safeSave(); $('#settings').classList.remove('open');
+  tick(); loadWeather(); loadCalendars(); renderAgile();
+};
+
+/* ---------- Keep awake & start ---------- */
+async function keepAwake(){ try { if (navigator.wakeLock) await navigator.wakeLock.request('screen'); } catch(e){} }
+document.addEventListener('visibilitychange', function(){ if (!document.hidden) keepAwake(); });
+keepAwake();
+renderCalendar(); loadWeather(); loadAgile(); loadCalendars();
+setInterval(loadWeather, 15*60*1000);
+setInterval(loadAgile, 30*60*1000);
+setInterval(loadCalendars, 10*60*1000);
+setTimeout(function(){ location.reload(); }, 6*3600*1000 + Math.random()*600000);
+</script>
+</body>
+</html>
