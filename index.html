@@ -48,6 +48,8 @@
   #dow { display:grid; grid-template-columns: repeat(7, 1fr); grid-gap:4px; color:var(--muted); font-size:12px; text-align:center; margin-bottom:4px; }
   #month { flex:1; display:grid; grid-template-columns: repeat(7, 1fr); grid-gap:4px; min-height:0; }
   .cell { background:var(--card2); border-radius:8px; padding:4px 5px; overflow:hidden; min-height:0; }
+  .cell { cursor:pointer; }
+  .cell.sel { background:#2f3d57; box-shadow: inset 0 0 0 2px rgba(255,255,255,.55); }
   .cell.other { opacity:.35; }
   .cell.today { box-shadow: inset 0 0 0 2px var(--accent); }
   .cell .n { font-size:13px; font-weight:600; margin-bottom:2px; }
@@ -111,7 +113,7 @@
   <div class="card" id="right">
     <div id="time">--:--</div>
     <div id="date"></div>
-    <div class="title">Today</div>
+    <div class="title" id="todayTitle">Today</div>
     <div id="today"></div>
   </div>
 </div>
@@ -346,8 +348,8 @@ function renderCalendar(){
   for (var i=0; i<weeks*7; i++){
     var d = new Date(gs.getFullYear(), gs.getMonth(), gs.getDate()+i);
     var evs = occurrences.filter(function(o){ return occursOn(o, d); }).sort(byTime);
-    var cls = 'cell' + (d.getMonth() !== now.getMonth() ? ' other' : '') + (d.getTime() === today.getTime() ? ' today' : '');
-    html += '<div class="'+cls+'"><div class="n">'+d.getDate()+'</div>';
+    var cls = 'cell' + (d.getMonth() !== now.getMonth() ? ' other' : '') + (d.getTime() === today.getTime() ? ' today' : '') + (selected && d.getTime() === selected ? ' sel' : '');
+    html += '<div class="'+cls+'" data-d="'+d.getTime()+'"><div class="n">'+d.getDate()+'</div>';
     evs.slice(0, maxChips).forEach(function(e){
       html += '<div class="chip" style="border-left-color:'+e.color+'">'+(e.allDay ? '' : hm(e.start).replace(/^0/,'')+' ')+esc(e.summary)+'</div>';
     });
@@ -356,9 +358,13 @@ function renderCalendar(){
   }
   m.innerHTML = html;
 
-  var t = occurrences.filter(function(o){ return occursOn(o, today); }).sort(byTime), th = '';
+  var target = (selected && selected !== today.getTime()) ? new Date(selected) : today;
+  var isToday = target.getTime() === today.getTime();
+  $('#todayTitle').textContent = isToday ? 'Today' : target.toLocaleDateString([], {weekday:'long', day:'numeric', month:'long'});
+  var t = occurrences.filter(function(o){ return occursOn(o, target); }).sort(byTime), th = '';
   if (!cfg.cals.length) th = '<div class="empty">No calendars yet \u2014 tap \u2699 to add some.</div>';
-  else if (!t.length) th = '<div class="empty">Nothing planned today</div>';
+  else if (!t.length) th = '<div class="empty">Nothing planned' + (isToday ? ' today' : '') + '</div>';
+  if (!isToday) th = '<div class="empty" style="margin-bottom:8px">Tap the same day again to go back to today</div>' + th;
   t.forEach(function(e){
     var past = !e.allDay && e.end < now;
     th += '<div class="ev'+(past?' past':'')+'" style="border-left-color:'+e.color+'"><span class="tm">'+(e.allDay ? 'All day' : hm(e.start)+' \u2013 '+hm(e.end))+'</span>'+esc(e.summary)+' <span class="who">'+esc(e.who)+'</span></div>';
@@ -368,6 +374,19 @@ function renderCalendar(){
   $('#status').textContent = s;
 }
 setInterval(renderCalendar, 60000);
+
+/* Tap a day to show its events on the right; resets to today after 60 seconds */
+var selected = null, selTimer = null;
+$('#month').addEventListener('click', function(ev){
+  var el = ev.target;
+  while (el && el !== this && !(el.getAttribute && el.getAttribute('data-d'))) el = el.parentNode;
+  if (!el || el === this) return;
+  var ms = +el.getAttribute('data-d');
+  selected = (selected === ms) ? null : ms;
+  clearTimeout(selTimer);
+  if (selected) selTimer = setTimeout(function(){ selected = null; renderCalendar(); }, 60000);
+  renderCalendar();
+});
 
 /* ---------- Settings UI ---------- */
 var PALETTE = ['#5ac8fa','#ff9f0a','#30d158','#ff375f','#bf5af2','#ffd60a'];
