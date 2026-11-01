@@ -68,7 +68,7 @@
   .empty { color:var(--muted); font-style:italic; font-size:14px; }
 
   #gear { position:fixed; right:6px; bottom:4px; opacity:.25; background:none; border:0; color:#fff; font-size:20px; padding:8px; }
-  #status { position:fixed; left:14px; bottom:3px; color:#556; font-size:10px; }
+  #status { position:fixed; left:14px; bottom:3px; color:#9aa5b5; font-size:12px; max-width:80%; }
   #settings { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.8); display:none; align-items:center; justify-content:center; z-index:10; }
   #settings.open { display:flex; }
   #panel { background:#1b212b; border-radius:18px; padding:22px; width:min(640px, 94vw); max-height:92vh; overflow:auto; }
@@ -311,8 +311,10 @@ function gridStart(){
 async function fetchICS(url){
   url = url.trim().replace(/^webcal:/i, 'https:');
   var full = cfg.proxy ? cfg.proxy + encodeURIComponent(url) : url;
-  var res = await fetch(full); if (!res.ok) throw new Error(res.status);
-  return res.text();
+  var res = await fetch(full); if (!res.ok) throw new Error('HTTP ' + res.status);
+  var txt = await res.text();
+  if (txt.indexOf('BEGIN:VCALENDAR') < 0) throw new Error('not a calendar file');
+  return txt;
 }
 async function loadCalendars(){
   var from = gridStart(), to = new Date(from.getFullYear(), from.getMonth(), from.getDate()+42), all = [], errors = [];
@@ -320,7 +322,7 @@ async function loadCalendars(){
     try {
       var evs = parseICS(await fetchICS(c.url));
       evs.forEach(function(e){ expand(e, from, to).forEach(function(o){ o.who = c.name; o.color = c.color; all.push(o); }); });
-    } catch(e){ errors.push(c.name || 'calendar'); }
+    } catch(e){ errors.push((c.name || 'calendar') + ' (' + (e && e.message ? e.message : e) + ')'); }
   }));
   occurrences = all; calErrors = errors; calUpdated = new Date();
   renderCalendar();
